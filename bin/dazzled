@@ -1,0 +1,34 @@
+#!/usr/bin/env node
+
+var path = require('path');
+var fork = require('child_process').fork;
+var argv = require('optimist')
+    .usage('Usage: $0 [service] -e [env] [-s]')
+    .alias('s', 'slient')
+    .default('s', false)
+    .demand(['_'])
+    .argv;
+
+if (!argv.children) {
+  var child = fork(path.resolve(__dirname, './dazzled'), 
+    process.argv.concat(['--children']), {
+      cwd: process.cwd(),
+      env: process.env,
+      encoding: 'utf8',
+      silent: false
+    });
+  if (argv.slient) {
+    child.unref();
+    process.exit();
+  };
+}
+else {
+  var Laucher = require('../laucher');
+  var name = argv._[2];
+  var env  = argv.e;
+  var proc = new Laucher({
+    root: '*',
+    configType: 'json'
+  });
+  proc.start(name, [], env);
+}
