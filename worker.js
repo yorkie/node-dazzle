@@ -18,21 +18,21 @@ function Worker (name, option) {
   this.name = name;
   this.option = option || {};
   this.starter = path.resolve(__dirname, 
-    util.format('./ports/%s.js', option.type || 'common'));
+    util.format('./proxy/%s.js', option.type || 'common'));
   this.pid = null;
   this._child = null;
 }
 util.inherits(Worker, EventEmitter);
 
 Worker.prototype.start = function (args) {
-  process.env._Dazzle = this.option || {};
   this._child = fork(this.starter, args, {
     env: process.env,
-    cwd: process.cwd(),
+    cwd: path.resolve(__dirname, '../../services', this.name),
     encoding: 'utf8',
     silent: false
   });
   this.pid = this._child.pid;
+  this._child.send(this.option);
 }
 
 Worker.prototype.stop = function (signal) {

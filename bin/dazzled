@@ -27,8 +27,8 @@ else {
   var name = argv._[2];
   var env  = argv.e;
   var proc = new Laucher({
-    root: '*',
-    configType: 'json'
+    root: '/opt/Beanstalk',
+    configType: 'yml'
   });
   proc.start(name, [], env);
 }
