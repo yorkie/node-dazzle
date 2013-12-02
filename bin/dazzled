@@ -1,34 +1,88 @@
 #!/usr/bin/env node
 
 var path = require('path');
-var fork = require('child_process').fork;
-var argv = require('optimist')
-    .usage('Usage: $0 [service] -e [env] [-s]')
+var spawn = require('child_process').spawn;
+var optimist = require('optimist');
+var argv = optimist
+    .usage('Usage: dazzled [service] [option]')
     .alias('s', 'slient')
+    .describe('s', 'daemonize this process')
     .default('s', false)
-    .demand(['_'])
+    .alias('l', 'list')
+    .describe('l', 'list processes')
+    .default('l', false)
+    .alias('b', 'bare')
+    .describe('b', 'run the dazzle server only')
+    .default('b', false)
+    .alias('e', 'env')
+    .describe('e', 'environment, please chenk your `process.env.VPS_ENV`')
+    .default('e', 'local')
+    .alias('k', 'kill')
+    .describe('k', 'kill a process by its pid')
     .argv;
 
+if (argv.help || process.argv.length <= 2) {
+  return optimist.showHelp();
+}
+
+
 if (!argv.children) {
-  var child = fork(path.resolve(__dirname, './dazzled'), 
+  var child = spawn(path.resolve(__dirname, './dazzled'), 
     process.argv.concat(['--children']), {
       cwd: process.cwd(),
       env: process.env,
-      encoding: 'utf8',
-      silent: false
+      stdio: argv.slient ? ['ignore', 'ignore', 'ignore', 'ipc'] : [0, 1, 2, 'ipc'],
+      detached: argv.slient
     });
-  if (argv.slient) {
-    child.unref();
-    process.exit();
-  };
+  if (child.pid > 0 && argv.slient) 
+    process.exit(0);
 }
 else {
+  
+  // require modules
   var Laucher = require('../laucher');
+  var CLI = require('../cli');
+
+  // configs
+  var port = 8015;
   var name = argv._[2];
-  var env  = argv.e;
-  var proc = new Laucher({
-    root: '/opt/Beanstalk',
-    configType: 'yml'
-  });
-  proc.start(name, [], env);
+  var env = argv.env;
+  
+  if (argv.bare) {
+    new Laucher({
+      root: '/opt/Beanstalk',
+      configType: 'yml'
+    });
+    return;
+  }
+
+  var cli = new CLI(port);
+  cli.on('error', function () {
+    // it shows the dazzle server is not created.
+    var proc = new Laucher({
+      root: '/opt/dazzle',
+      configType: 'json'
+    });
+    proc.start(name, [], env);
+  })
+  cli.on('ready', function () {
+
+    if (argv.list) {
+      cli.list();
+      return;
+    }
+    else if (argv.kill) {
+      if (argv.kill == true)
+        cli.stop();
+      else
+        cli.stop(argv.kill);
+      return
+    }
+    else {
+      // use the net to start process.
+      cli.start(name, [], env);
+    }
+    
+  })
+  cli.connect();
 }

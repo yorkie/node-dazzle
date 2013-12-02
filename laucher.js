@@ -10,8 +10,6 @@ module.exports = Launcher;
 
 function Launcher (option) {
 
-  process.title = 'Dazzle Launcher';
-
   /*
    * the root path
    * for example: /opt/Beanstalk
@@ -43,6 +41,11 @@ function Launcher (option) {
   if ([this.root, this.path].indexOf('required') != -1)
     throw new Error('Should provide the `root` and `path` arguments');
 
+  //
+  // set process
+  process.title = 'Dazzle Launcher';
+  process.env.NODE_PATH += ':'+ util.format('%s/lib', option.root);
+
   this.load();
   this.listen();
 }
@@ -53,26 +56,45 @@ function Launcher (option) {
 Launcher.prototype.start = function (name, argv, env) {
   var list = this._configs[name];
   var argv = argv || [];
-  var env = env || 'local';
+  var env = process.env.VPS_ENV = env || 'local';
+
+  if (!list)
+    throw new Error('cannot find the process config: '+name);
+
   for (var i in list) {
     var item = list[i];
     var selected = item.env.indexOf(env);
     if (selected == -1)
       continue;
     this._workers.push(
-      worker.createOne(name, item, []));
+      worker.createOne(name, this, item, []));
   }
 }
 
 /*
  * Kill a process by pid
  */
-Launcher.prototype.kill = function (pid) {
+Launcher.prototype.stop = function (pid) {
   this._workers.filter(function (worker) {
-    return !pid || pid === worker.pid
+    return !pid || pid === worker.pid || arguments[0] === worker.name
   }).forEach(function (worker) {
-    return worker.stop();
+    return worker.stop(0);
   });
+}
+
+/*
+ * list all process
+ */
+Launcher.prototype.list = function () {
+  var result = [];
+  this._workers.forEach(function (worker) {
+    result.push({
+      name: worker.name,
+      option: worker.option,
+      pid: worker.pid
+    })
+  });
+  return result;
 }
 
 /*
@@ -113,11 +135,51 @@ Launcher.prototype.reload = function (filter) {
 }
 
 /*
+ * log data....
+ */
+Launcher.prototype._log = function (data) {
+  var catalog = data.catalog;
+  var level   = data.level;
+  var message = data.message;
+  console.log(message);
+}
+
+/*
  * open the port for others connect to this
  */
 Launcher.prototype.listen = function (port) {
+  var self = this;
   var server = net.createServer(function (socket) {
-    //socket.pipe(null);
+    socket.setEncoding('utf8');
+    socket.on('data', function (chunk) {
+      var hasError = true;
+      var response = {};
+      var message  = {};
+      try {
+        message = JSON.parse(chunk.toString());
+        hasError = false;
+      } catch (e) {
+        response.error = e;
+        socket.end(JSON.stringify(response));
+      }
+      if (!hasError) {
+        // response
+        var caller = self[message.command];
+        if (caller && typeof caller == 'function') {
+          try {
+            response.result = caller.apply(self, message.args);
+            response.error = null;
+            socket.end(JSON.stringify(response));
+          } catch (e) {
+            response.error = e.stack;
+            socket.end(JSON.stringify(response));
+          };
+        } else {
+          response.error = 'cannot find the function: '+ message.command;
+          socket.end(JSON.stringify(response));
+        }
+      }
+    });
   });
   server.listen(port = (port||8015), function () {
     console.log('laucher up:' + port);

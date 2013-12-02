@@ -30,7 +30,7 @@ WebProxy.prototype._init = function (exports) {
 }
 
 WebProxy.prototype.setRoutes = function () {
-  var conf = this.conf = require(process.cwd()+'/routes.json');
+  var conf = this.conf = require(process.cwd()+'/routes.yml');
   for (var method in conf)
     this.binding(method, conf[method]);
 }
@@ -72,6 +72,7 @@ WebProxy.prototype.binding = function (method, routes) {
 WebProxy.prototype.start = function () {
   var server = http.createServer(this.app);
   server.listen(this.port);
+  console.log('the server is up -> '+this.port);
 }
 
 // Exports

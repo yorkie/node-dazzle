@@ -1,5 +1,11 @@
 
 var path = require('path');
+var util = require('util');
+
+process.on('uncaughtException', function (e) {
+  console.log(e.stack);
+  process.exit(0);
+})
 
 /*
  * This proxy is for common app
@@ -7,6 +13,7 @@ var path = require('path');
 function CommonProxy () {
   process.title = 'Dazzle Worker';
   process.on('message', this._onHandler.bind(this));
+  console.log(process.env.NODE_PATH)
 }
 
 CommonProxy.prototype._onHandler = function (env, socket) {
@@ -18,8 +25,9 @@ CommonProxy.prototype._onHandler = function (env, socket) {
 }
 
 CommonProxy.prototype._init = function (exports) {
-  exports.start.call(this);
+  //exports.start.call(this);
 }
+
 
 // Exports
 if (require.main == module)

@@ -1,8 +1,7 @@
 {
-    "name" : "dazzle",
+    "name" : "node-dazzle",
     "version" : "0.1",
-    "description" : "Light-weight daemonize tools",
-    "main" : "./laucher.js",
+    "description" : "light-weigh process manager for nodejs",
     "dependencies" : {
 
     },
@@ -14,7 +13,7 @@
     },
     "repository" : {
         "type" : "git",
-        "url" : "http://github.com/yorkie/dazzle.git"
+        "url" : "http://github.com/yorkie/node-dazzle.git"
     },
     "author" : {
         "name" : "Yorkie Neil",
